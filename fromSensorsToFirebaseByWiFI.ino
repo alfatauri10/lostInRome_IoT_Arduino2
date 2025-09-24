@@ -189,3 +189,17 @@ void readSensors() {
   Serial.print("  T: "); Serial.println(temperatureC);
   Serial.print("  Soil perc: "); Serial.println(soil_moisture);
 }
+
+void readSensorsOffset() {
+  // Lettura del sensore con la formula standard
+  temperatureC = ((((analogRead(A1) * 5.0) / 1024.0) - 0.5) * 100);
+
+  // Aggiungi un offset di calibrazione per correggere l'errore
+  float offset = 0; // Esempio: sottrai 20 gradi
+  temperatureC = temperatureC + offset;
+
+  Serial.println("Letture sensori:");
+  Serial.print("  T: ");
+  Serial.println(temperatureC);
+  Serial.print("  Soil perc: "); Serial.println(soil_moisture);
+}
