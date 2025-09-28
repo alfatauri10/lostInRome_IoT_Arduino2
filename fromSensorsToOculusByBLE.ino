@@ -9,13 +9,13 @@
 #include <ArduinoBLE.h> // ArduinoBLE library by Arduino
 #include <ArduinoJson.h> // ArduinoJson library by Benoit Blanchon
 
-
 // Constants for BLE communication
 #define MAX_FRAGMENT_SIZE 14  // DO NOT MODIFY: maximum limit of character otherwise the data sent could not be displayed correctly
 
 // Define a custom BLE service and characteristic
 BLEService customService("19B10000-E8F2-537E-4F6C-D104768A1214");                                        // DO NOT MODIFY: Custom Service UUID
 BLECharacteristic dataCharacteristic("19B10002-E8F2-537E-4F6C-D104768A1214", BLERead | BLENotify, 512);  // DO NOT MODIFY: Custom Characteristic UUID
+
 
 // Define the number of sensors
 const int NUM_SENSORS = 10; // DO NOT MODIFY: Unity expects precisely 10 variables
@@ -34,9 +34,15 @@ const char* variableNames[NUM_SENSORS] = {
 unsigned long previousMillis = 0;
 const long interval = 1000;  // Data sending interval in milliseconds
 
+float readTemp();
+float readUmidita();
+
 void setup() {
   // Initialize serial communication
-  Serial.begin(9600);
+  Serial.begin(115200);
+
+  analogReference(AR_EXTERNAL);
+
   while (!Serial);
 
   pinMode(8, INPUT);
@@ -65,6 +71,7 @@ void setup() {
 }
 
 void loop() {
+  
   // Wait for BLE central device to connect
   BLEDevice central = BLE.central();
   if (central) {
@@ -78,9 +85,11 @@ void loop() {
         previousMillis = currentMillis;
 
         // Uncomment lines below to include your sensor readings
-        variableValues[0] = ((analogRead(A0)/10.23)-100)*(-1); // soul umidity
-        variableValues[1] = (((analogRead(A1)*5.0) / 1023.0) - 0.5) * 100; // temp con la conversione in gradi Celsius
+        variableValues[0] = readUmidita(); // soul umidity
+        variableValues[1] = readTemp(); // temp con la conversione in gradi Celsius
 
+        Serial.println(variableValues[0]);
+        Serial.println(variableValues[1]);
 
         // Create a JSON object to hold sensor data
         StaticJsonDocument<512> doc;
@@ -128,4 +137,25 @@ void loop() {
 
     Serial.println("Disconnected from central");
   }
+}
+
+float readTemp(){
+  int val_Adc = 0;
+
+  //eseguo un ciclo
+  for(byte i = 0; i < 100; i++){
+    //acquisisco il valore e lo sommo alla variabile
+    val_Adc += analogRead(A1);
+    //questo ritardo serve per dare il tempo all ADC di eseguire correttamente la prossima acquisizione
+    delay(10);
+  }
+  //eseguo la media dei 100 valori letti
+  val_Adc /= 100;
+
+  //calcolo la temperatura in °C
+  return ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
+}
+
+float readUmidita(){
+  return ((analogRead(A0)/10.23)-100)*(-1);
 }
