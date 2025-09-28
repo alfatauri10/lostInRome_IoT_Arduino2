@@ -8,19 +8,25 @@
 #include <WiFiS3.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
-#include <DHT.h>
+
 
 
 bool wifiConnect();
 bool dbPost(String pathJson, String jsonBody);
 bool dbPut(String pathJson, String jsonBody);
 void readSensors();
+void readTemp();
+void readUmidita();
+void stampaValoriSuMonitorSeriale();
 
 
 // ====== IMPOSTAZIONI WIFI ======
 //TODO: da modificare con i dati del WIFI che avremo al maker faire
 #define WIFI_SSID "Galilei TEST"
 #define WIFI_PASSWORD "Coniglio21"
+
+//#define WIFI_SSID "iPhone di Valentina"
+//#define WIFI_PASSWORD "111111111"
 
 //#define WIFI_SSID  "TIM-35780934"
 //#define WIFI_PASSWORD "3E5p6TYtDG3Zftk5qeb4HyXe"
@@ -44,35 +50,34 @@ int   soil_moisture  = 0;
 
 
 void setup() {
- Serial.begin(115200);
+  Serial.begin(115200);
 
- while (!Serial) { ; }
+  analogReference(AR_EXTERNAL);
+  while (!Serial) { ; }
   pinMode(SOILDIGITALPIN, INPUT);
   pinMode(SOILANALOGPIN, INPUT);
 
 
- Serial.println("Connessione WiFi...");
- if (!wifiConnect()) {
-   Serial.println("WiFi non connesso.");
-   return;
- }
- Serial.print("Connesso. IP: ");
- Serial.println(WiFi.localIP());
- Serial.println("Sistema pronto.");
+  Serial.println("Connessione WiFi...");
+  if (!wifiConnect()) {
+    Serial.println("WiFi non connesso.");
+    return;
+  }
+  Serial.print("Connesso. IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println("Sistema pronto.");
 }
 
 
 void loop() {
+
  if (WiFi.status() != WL_CONNECTED) {
-
-
    Serial.println("WiFi disconnesso. Riconnessione...");
    if (!wifiConnect()) {
      delay(2000);
      return;
    }
  }
-
 
  readSensors();
 
@@ -127,7 +132,7 @@ bool wifiConnect() {
  }
  return !(ip[0] == 0 && ip[1] == 0 && ip[2] == 0 && ip[3] == 0);
 }
-//const String&
+
 // ------- Helper: POST JSON su un path del DB -------
 bool dbPost(String pathJson, String jsonBody) {
  // Esempio pathJson: "/sensors.json"
@@ -173,33 +178,41 @@ bool dbPut(String pathJson, String jsonBody) {
 }
 
 
-
 void readSensors() {
- 
-  //temperatureC  = 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
-  temperatureC = ((((analogRead(A1)*5.0) / 1024.0) - 0.5) * 100);
+  readTemp();
+  readUmidita();
+  stampaValoriSuMonitorSeriale();
+}
 
+void readTemp(){
+  int val_Adc = 0;
+
+  //eseguo un ciclo
+  for(byte i = 0; i < 100; i++){
+    //acquisisco il valore e lo sommo alla variabile
+    val_Adc += analogRead(A1);
+    //questo ritardo serve per dare il tempo all ADC di eseguire correttamente la prossima acquisizione
+    delay(10);
+  }
+  //eseguo la media dei 100 valori letti
+  val_Adc /= 100;
+
+
+  //calcolo la temperatura in °C
+  temperatureC = ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
+  //temperatureC  = 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
+  //temperatureC = ((((analogRead(A1)*5.0) / 1024.0) - 0.5) * 100); //non funzionante
+
+}
+
+void readUmidita(){
   //soil_moisture = 2000 + random(0, 100); //VALORE CABLATO PER TEST
   //soil_moisture = ((500/10.23)-100)*(-1);
   soil_moisture = ((analogRead(SOILANALOGPIN)/10.23)-100)*(-1);
-
-
-
-  Serial.println("Letture sensori:");
-  Serial.print("  T: "); Serial.println(temperatureC);
-  Serial.print("  Soil perc: "); Serial.println(soil_moisture);
 }
 
-void readSensorsOffset() {
-  // Lettura del sensore con la formula standard
-  temperatureC = ((((analogRead(A1) * 5.0) / 1024.0) - 0.5) * 100);
-
-  // Aggiungi un offset di calibrazione per correggere l'errore
-  float offset = 0; // Esempio: sottrai 20 gradi
-  temperatureC = temperatureC + offset;
-
+void stampaValoriSuMonitorSeriale() {
   Serial.println("Letture sensori:");
-  Serial.print("  T: ");
-  Serial.println(temperatureC);
+  Serial.print("  T: "); Serial.println(temperatureC);
   Serial.print("  Soil perc: "); Serial.println(soil_moisture);
 }
