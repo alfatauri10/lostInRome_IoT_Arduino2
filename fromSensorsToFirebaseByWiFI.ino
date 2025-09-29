@@ -8,6 +8,10 @@
 #include <WiFiS3.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
+#include "ArduinoGraphics.h"
+#include "Arduino_LED_Matrix.h"
+
+ArduinoLEDMatrix matrix;
 
 
 
@@ -18,6 +22,8 @@ void readSensors();
 void readTemp();
 void readUmidita();
 void stampaValoriSuMonitorSeriale();
+void setupMatrix();
+void loopMatrix();
 
 
 // ====== IMPOSTAZIONI WIFI ======
@@ -52,6 +58,8 @@ int   soil_moisture  = 0;
 void setup() {
   Serial.begin(115200);
 
+  setupMatrix();
+
   analogReference(AR_EXTERNAL);
   while (!Serial) { ; }
   pinMode(SOILDIGITALPIN, INPUT);
@@ -71,6 +79,7 @@ void setup() {
 
 void loop() {
 
+ loopMatrix();
  if (WiFi.status() != WL_CONNECTED) {
    Serial.println("WiFi disconnesso. Riconnessione...");
    if (!wifiConnect()) {
@@ -104,7 +113,7 @@ void loop() {
  Serial.println(ok ? "Dati inviati!" : "Invio fallito.");
 
 
- delay(10000); // 10 secondi tra un invio e l'altro
+ delay(5000); // 10 secondi tra un invio e l'altro
 }
 
 
@@ -215,4 +224,35 @@ void stampaValoriSuMonitorSeriale() {
   Serial.println("Letture sensori:");
   Serial.print("  T: "); Serial.println(temperatureC);
   Serial.print("  Soil perc: "); Serial.println(soil_moisture);
+}
+
+void setupMatrix(){
+  matrix.begin();
+
+  matrix.beginDraw();
+  matrix.stroke(0xFFFFFFFF);
+  // add some static text
+  const char text[] = "";
+  matrix.textFont(Font_4x6);
+  matrix.beginText(0, 1, 0xFFFFFF);
+  matrix.println(text);
+  matrix.endText();
+  matrix.endDraw();
+  delay(2000);
+}
+
+void loopMatrix(){
+   matrix.beginDraw();
+
+  matrix.stroke(0xFFFFFFFF);
+  matrix.textScrollSpeed(50);
+
+  // add the text
+  const char text[] = " LostInRome ";
+  matrix.textFont(Font_5x7);
+  matrix.beginText(0, 1, 0xFFFFFF);
+  matrix.println(text);
+  matrix.endText(SCROLL_LEFT);
+
+  matrix.endDraw();
 }
