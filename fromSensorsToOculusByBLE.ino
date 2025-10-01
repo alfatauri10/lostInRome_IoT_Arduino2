@@ -165,12 +165,7 @@ float readTemp(){
 
 
   //calcolo la temperatura in °C
-  temperatureC = ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
-  //temperatureC  = 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
-  //temperatureC = ((((analogRead(A1)*5.0) / 1024.0) - 0.5) * 100); //non funzionante
-
-}
-
+  //return 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
   return ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
 }
 
