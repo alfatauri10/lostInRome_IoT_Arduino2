@@ -8,6 +8,14 @@
 
 #include <ArduinoBLE.h> // ArduinoBLE library by Arduino
 #include <ArduinoJson.h> // ArduinoJson library by Benoit Blanchon
+#include "ArduinoGraphics.h"
+#include "Arduino_LED_Matrix.h"
+
+ArduinoLEDMatrix matrix;
+
+void setupMatrix();
+void loopMatrix();
+
 
 // Constants for BLE communication
 #define MAX_FRAGMENT_SIZE 14  // DO NOT MODIFY: maximum limit of character otherwise the data sent could not be displayed correctly
@@ -41,6 +49,8 @@ void setup() {
   // Initialize serial communication
   Serial.begin(115200);
 
+  setupMatrix();
+
   analogReference(AR_EXTERNAL);
 
   while (!Serial);
@@ -71,7 +81,8 @@ void setup() {
 }
 
 void loop() {
-  
+
+   loopMatrix();
   // Wait for BLE central device to connect
   BLEDevice central = BLE.central();
   if (central) {
@@ -152,10 +163,47 @@ float readTemp(){
   //eseguo la media dei 100 valori letti
   val_Adc /= 100;
 
+
   //calcolo la temperatura in °C
+  temperatureC = ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
+  //temperatureC  = 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
+  //temperatureC = ((((analogRead(A1)*5.0) / 1024.0) - 0.5) * 100); //non funzionante
+
+}
+
   return ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
 }
 
 float readUmidita(){
   return ((analogRead(A0)/10.23)-100)*(-1);
+}
+void setupMatrix(){
+  matrix.begin();
+
+  matrix.beginDraw();
+  matrix.stroke(0xFFFFFFFF);
+  // add some static text
+  const char text[] = "";
+  matrix.textFont(Font_4x6);
+  matrix.beginText(0, 1, 0xFFFFFF);
+  matrix.println(text);
+  matrix.endText();
+  matrix.endDraw();
+  delay(2000);
+}
+
+void loopMatrix(){
+   matrix.beginDraw();
+
+  matrix.stroke(0xFFFFFFFF);
+  matrix.textScrollSpeed(50);
+
+  // add the text
+  const char text[] = " LostInRome ";
+  matrix.textFont(Font_5x7);
+  matrix.beginText(0, 1, 0xFFFFFF);
+  matrix.println(text);
+  matrix.endText(SCROLL_LEFT);
+
+  matrix.endDraw();
 }
