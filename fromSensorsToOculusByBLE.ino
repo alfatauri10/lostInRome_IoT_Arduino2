@@ -13,10 +13,6 @@
 
 ArduinoLEDMatrix matrix;
 
-void setupMatrix();
-void loopMatrix();
-
-
 // Constants for BLE communication
 #define MAX_FRAGMENT_SIZE 14  // DO NOT MODIFY: maximum limit of character otherwise the data sent could not be displayed correctly
 
@@ -44,46 +40,85 @@ const long interval = 1000;  // Data sending interval in milliseconds
 
 float readTemp();
 float readUmidita();
+void setupMatrix();
+void loopMatrix();
+void sentDataToSensor();
+void setupBLE();
 
 void setup() {
-  // Initialize serial communication
   Serial.begin(115200);
 
-  setupMatrix();
-
-  analogReference(AR_EXTERNAL);
-
-  while (!Serial);
-
-  pinMode(8, INPUT);
   pinMode(A0, INPUT);
-
-
-  // Initialize BLE
-  if (!BLE.begin()) {
-    Serial.println("Starting BLE failed!");
-    while (1);
-  }
-
-  // Configure BLE device name and advertise the custom service
-  BLE.setLocalName("Device_BLE"); // DO NOT MODIFY: the app works only with this local name
-  BLE.setAdvertisedService(customService);
-
-  // Add characteristic to the service
-  customService.addCharacteristic(dataCharacteristic);
-
-  // Add the service to BLE
-  BLE.addService(customService);
-
-  // Start advertising
-  BLE.advertise();
-  Serial.println("BLE device active, waiting for connections...");
+  setupMatrix();
+  while (!Serial);
+  setupBLE();
 }
 
 void loop() {
+  loopMatrix();
+  sentDataToSensor();
+}
 
-   loopMatrix();
-  // Wait for BLE central device to connect
+float readTemp(){
+
+  analogReference(AR_EXTERNAL);
+  delay(10); // Attendi stabilizzazione riferimento
+
+  int val_Adc = 0;
+
+  //eseguo un ciclo
+  for(byte i = 0; i < 100; i++){
+    //acquisisco il valore e lo sommo alla variabile
+    val_Adc += analogRead(A1);
+    //questo ritardo serve per dare il tempo all ADC di eseguire correttamente la prossima acquisizione
+    delay(10);
+  }
+
+  //eseguo la media dei 100 valori letti
+  val_Adc /= 100;
+
+
+  //calcolo la temperatura in °C
+  //return 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
+  return ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
+}
+
+float readUmidita(){
+  analogReference(AR_DEFAULT);
+  delay(10); // Attendi stabilizzazione riferimento
+  return ((analogRead(A0)/10.23)-100)*(-1);
+}
+void setupMatrix(){
+  matrix.begin();
+  matrix.beginDraw();
+  matrix.stroke(0xFFFFFFFF);
+  // add some static text
+  const char text[] = "";
+  matrix.textFont(Font_4x6);
+  matrix.beginText(0, 1, 0xFFFFFF);
+  matrix.println(text);
+  matrix.endText();
+  matrix.endDraw();
+  delay(2000);
+}
+
+void loopMatrix(){
+  matrix.beginDraw();
+
+  matrix.stroke(0xFFFFFFFF);
+  matrix.textScrollSpeed(50);
+
+  // add the text
+  const char text[] = " LostInRome BLE";
+  matrix.textFont(Font_5x7);
+  matrix.beginText(0, 1, 0xFFFFFF);
+  matrix.println(text);
+  matrix.endText(SCROLL_LEFT);
+  matrix.endDraw();
+}
+
+void sentDataToSensor(){
+   // Wait for BLE central device to connect
   BLEDevice central = BLE.central();
   if (central) {
     Serial.print("Connected to central: ");
@@ -150,55 +185,24 @@ void loop() {
   }
 }
 
-float readTemp(){
-  int val_Adc = 0;
-
-  //eseguo un ciclo
-  for(byte i = 0; i < 100; i++){
-    //acquisisco il valore e lo sommo alla variabile
-    val_Adc += analogRead(A1);
-    //questo ritardo serve per dare il tempo all ADC di eseguire correttamente la prossima acquisizione
-    delay(10);
+void setupBLE(){
+  // Initialize BLE
+  if (!BLE.begin()) {
+    Serial.println("Starting BLE failed!");
+    while (1);
   }
-  //eseguo la media dei 100 valori letti
-  val_Adc /= 100;
 
+  // Configure BLE device name and advertise the custom service
+  BLE.setLocalName("Device_BLE"); // DO NOT MODIFY: the app works only with this local name
+  BLE.setAdvertisedService(customService);
 
-  //calcolo la temperatura in °C
-  //return 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
-  return ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
-}
+  // Add characteristic to the service
+  customService.addCharacteristic(dataCharacteristic);
 
-float readUmidita(){
-  return ((analogRead(A0)/10.23)-100)*(-1);
-}
-void setupMatrix(){
-  matrix.begin();
+  // Add the service to BLE
+  BLE.addService(customService);
 
-  matrix.beginDraw();
-  matrix.stroke(0xFFFFFFFF);
-  // add some static text
-  const char text[] = "";
-  matrix.textFont(Font_4x6);
-  matrix.beginText(0, 1, 0xFFFFFF);
-  matrix.println(text);
-  matrix.endText();
-  matrix.endDraw();
-  delay(2000);
-}
-
-void loopMatrix(){
-   matrix.beginDraw();
-
-  matrix.stroke(0xFFFFFFFF);
-  matrix.textScrollSpeed(50);
-
-  // add the text
-  const char text[] = " LostInRome BLE";
-  matrix.textFont(Font_5x7);
-  matrix.beginText(0, 1, 0xFFFFFF);
-  matrix.println(text);
-  matrix.endText(SCROLL_LEFT);
-
-  matrix.endDraw();
+  // Start advertising
+  BLE.advertise();
+  Serial.println("BLE device active, waiting for connections...");
 }
