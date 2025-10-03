@@ -248,7 +248,7 @@ void loopMatrix(){
   matrix.textScrollSpeed(50);
 
   // add the text
-  const char text[] = " LostInRome ";
+  const char text[] = " LostInRome WIFI";
   matrix.textFont(Font_5x7);
   matrix.beginText(0, 1, 0xFFFFFF);
   matrix.println(text);
