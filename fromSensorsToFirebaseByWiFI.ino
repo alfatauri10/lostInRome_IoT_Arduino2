@@ -13,8 +13,6 @@
 
 ArduinoLEDMatrix matrix;
 
-
-
 bool wifiConnect();
 bool dbPost(String pathJson, String jsonBody);
 bool dbPut(String pathJson, String jsonBody);
@@ -24,7 +22,10 @@ void readUmidita();
 void stampaValoriSuMonitorSeriale();
 void setupMatrix();
 void loopMatrix();
-
+void connectWiFi();
+String getStringJson();
+void setupWiFi();
+bool sendJson();
 
 // ====== IMPOSTAZIONI WIFI ======
 //TODO: da modificare con i dati del WIFI che avremo al maker faire
@@ -40,9 +41,7 @@ void loopMatrix();
 
 #define DATABASE_HOST "lostinrome-sensori-default-rtdb.firebaseio.com"
 
-
 #define SOILANALOGPIN A0
-#define SOILDIGITALPIN 8
 
 
 // ====== Client HTTPS + HttpClient verso il Realtime Database ======
@@ -60,54 +59,23 @@ void setup() {
 
   setupMatrix();
 
-  analogReference(AR_EXTERNAL);
   while (!Serial) { ; }
-  pinMode(SOILDIGITALPIN, INPUT);
+
   pinMode(SOILANALOGPIN, INPUT);
 
-
-  Serial.println("Connessione WiFi...");
-  if (!wifiConnect()) {
-    Serial.println("WiFi non connesso.");
-    return;
-  }
-  Serial.print("Connesso. IP: ");
-  Serial.println(WiFi.localIP());
-  Serial.println("Sistema pronto.");
+  setupWiFi();
 }
 
 
 void loop() {
 
  loopMatrix();
- if (WiFi.status() != WL_CONNECTED) {
-   Serial.println("WiFi disconnesso. Riconnessione...");
-   if (!wifiConnect()) {
-     delay(2000);
-     return;
-   }
- }
+
+ connectWiFi();
 
  readSensors();
 
-
- // Costruisci payload JSON da scrivere sul DB Firebase
- DynamicJsonDocument doc(512);
- doc["temperature"]   = temperatureC;
- doc["soil_moisture"] = soil_moisture;
-
-
- String jsonStr;
- serializeJson(doc, jsonStr);
-
-
- Serial.println("Payload JSON:");
- Serial.println(jsonStr);
-
-
-
- // ===== OPZIONE B: SOVRASCRIVI (PUT) percorso fisso =====
- bool ok = dbPut("/sensors.json", jsonStr);
+ bool ok = sendJson();
 
 
  Serial.println(ok ? "Dati inviati!" : "Invio fallito.");
@@ -115,8 +83,6 @@ void loop() {
 
  delay(5000); // 10 secondi tra un invio e l'altro
 }
-
-
 
 
 // ------- Helper: connessione WiFi -------
@@ -194,6 +160,10 @@ void readSensors() {
 }
 
 void readTemp(){
+
+  analogReference(AR_EXTERNAL);
+  delay(10); // Attendi stabilizzazione riferimento
+
   int val_Adc = 0;
 
   //eseguo un ciclo
@@ -210,13 +180,12 @@ void readTemp(){
   //calcolo la temperatura in °C
   temperatureC = ((val_Adc * 0.0032) - 0.5) / 0.01; //valore temperatura vicino al reale
   //temperatureC  = 20.0 + (random(0, 50) / 10.0); //VALORE CABLATO PER TEST
-  //temperatureC = ((((analogRead(A1)*5.0) / 1024.0) - 0.5) * 100); //non funzionante
 
 }
 
 void readUmidita(){
-  //soil_moisture = 2000 + random(0, 100); //VALORE CABLATO PER TEST
-  //soil_moisture = ((500/10.23)-100)*(-1);
+  analogReference(AR_DEFAULT);
+  delay(10); // Attendi stabilizzazione riferimento
   soil_moisture = ((analogRead(SOILANALOGPIN)/10.23)-100)*(-1);
 }
 
@@ -242,7 +211,7 @@ void setupMatrix(){
 }
 
 void loopMatrix(){
-   matrix.beginDraw();
+  matrix.beginDraw();
 
   matrix.stroke(0xFFFFFFFF);
   matrix.textScrollSpeed(50);
@@ -255,4 +224,47 @@ void loopMatrix(){
   matrix.endText(SCROLL_LEFT);
 
   matrix.endDraw();
+}
+
+void connectWiFi(){
+   if (WiFi.status() != WL_CONNECTED) {
+   Serial.println("WiFi disconnesso. Riconnessione...");
+   if (!wifiConnect()) {
+     delay(2000);
+     return;
+   }
+ }
+}
+
+void setupWiFi(){
+  Serial.println("Connessione WiFi...");
+  if (!wifiConnect()) {
+    Serial.println("WiFi non connesso.");
+    return;
+  }
+  Serial.print("Connesso. IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println("Sistema pronto.");
+}
+
+String getStringJson(){
+   // Costruisci payload JSON da scrivere sul DB Firebase
+ DynamicJsonDocument doc(512);
+ doc["temperature"]   = temperatureC;
+ doc["soil_moisture"] = soil_moisture;
+
+
+ String jsonStr;
+ serializeJson(doc, jsonStr);
+
+
+ Serial.println("Payload JSON:");
+ Serial.println(jsonStr);
+ return jsonStr;
+
+}
+
+bool sendJson(){
+  String jsonStr = getStringJson();
+  return dbPut("/sensors.json", jsonStr);
 }
